@@ -1,11 +1,12 @@
 var DeckBuilder = require('./deckBuilder.js');
 var Deck = require('./deck.js');
 var rules = require('./public/js/rules.js');
+const { HandType } = require('./player.js');
 
 var Game = function(eventEmitter) {
   this._eventEmitter = eventEmitter;
   // The amount of cards that the dealer gives each player at the start
-  this._initialCardCount = 7;
+  this._initialCardCount = 3;
 
   // The current game state
   this._started = false;
@@ -61,13 +62,19 @@ Game.prototype.shuffleCards = function(){
 
 // Deal cards to all players
 Game.prototype.dealCards = function(){
-    for( var i = 0; i < this._initialCardCount; i++ ){
-        for( var j = 0; j < this._players.length; j ++ ){
-            var card = this._deck.take(1);
-           this._players[j].give(card);
+    for (let type of Object.values(HandType)) {
+        for( var i = 0; i < this._initialCardCount; i++ ){
+            for( var j = 0; j < this._players.length; j++ ){
+                var card = this._deck.take(1);
+                this._players[j].give(card, type);
+                console.log("Dealt card " + card + " with type " + type + " to player " + this._players[j]._nickname);
+            }
         }
     }
-
+    for( let j = 0; j < this._players.length; j++ ){
+        let player = this._players[j];
+        console.log("Player " + player._nickname + " has " + [player._hand.length,player._table.length, player._blind.length] + " cards");
+    }
     //return this._eventEmitter.emit('dealCards');
 }
 
@@ -78,12 +85,10 @@ Game.prototype.removePlayer = function(playerId){
 
         if( this._players[i].getId() == playerId ){
             // Remove the cards from
-            cards = this._players[i].getHand();
+            cards = this._players[i].getAllCards();
             this._players[i].removeCards();
             this._players.splice(i, 1);
-
         }
-
     }
 
     if( cards != null)
@@ -105,7 +110,7 @@ Game.prototype.getPlayersClientSide = function(){
 
         var player = {
             nickname: this._players[i]._nickname,
-            cardCount: this._players[i].getHand().length,
+            handCount: this._players[i].getHand(HandType.NORMAL).length,
             onTurn: (i == this._currentTurn),
             ready: this._players[i]._ready
         };
@@ -304,34 +309,17 @@ Game.prototype.skipTurn = function(player){
 
 Game.prototype.triggerSpecialEffect = function(card, player){
 
-    if( card._value == 2){
-        this._debt += 2;
-        console.log('next player has debt of '+this._debt);
-
-        this.messageNextPlayer('debt');
+    if (card.isSpecial()) {
+        var special = card.getSpecial()
+        switch (special){
+            case "SKIP":
+                this.setNextTurn();
+            case "BURN":
+                // Burn deck
+            case "REVERSE":
+                this.flipRotation();
+        }
     }
-    else if( card._value == 0){
-        this._debt += 5;
-        console.log('next player has debt of '+this._debt);
-        this.messageNextPlayer('debt');
-    }
-
-    else if( card._value == 7){
-        this._endTurn = false;
-    }
-
-    else if (card._value == 11){
-        this._endTurn = false;
-        this._jackActive = true;
-        this._eventEmitter.emit('chooseSuit', player);
-    }
-    else if( card._value == 1){
-        this.flipRotation();
-    }
-    else if( card._value == 8){
-        this.setNextTurn();
-    }
-
 }
 
 Game.prototype.messageNextPlayer = function(event, data){

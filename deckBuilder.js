@@ -11,7 +11,7 @@ var DeckBuilder = function() {
 
   // The amount of players that can play with 1 deck
   // If got more than 5 players we need 2 decks
-  this._playersPerDeck = 4;
+  this._playersPerDeck = 3;
 
 }
 
@@ -56,7 +56,7 @@ DeckBuilder.prototype.build = function() {
       // Check is important, because the object has also prototype properties
       if (suits.hasOwnProperty(suit)) {
 
-          for( var j = 1; j <= this._cardsPerSuit; j++ ){
+          for( var j = 2; j <= this._cardsPerSuit; j++ ){
               var value = j;
               var card = new Card(value, suit);
               cards.push(card);
@@ -66,9 +66,6 @@ DeckBuilder.prototype.build = function() {
     }
   }
 
-    // Add 2 jokers
-    cards.push( new Card(0) );
-    cards.push( new Card(0) );
   return cards;
 };
 

@@ -12,7 +12,8 @@ app.set('view engine', 'jade');
 app.use(express.static(path.join(__dirname, 'public')));
 
 var Game = require('./game.js');
-var Player = require('./player.js');
+var { Player } = require('./player.js');
+var Card = require('./card.js');
 var GameManager =  new Game(eventEmitter);
 
 var nextUserId = 1;
@@ -23,8 +24,6 @@ var timeoutTime = 30000;
 
 
 function getGameData(){
-
-
 
     var data = {
         playerCount: GameManager.getPlayerCount(),
@@ -227,6 +226,7 @@ io.on('connection', function(socket) {
     });
 
     socket.on('move', function(card){
+        card = Card.FromSocket(card);
         console.log('new move');
         if(typeof socket.player == "undefined" || !GameManager.isStarted())
             return false;

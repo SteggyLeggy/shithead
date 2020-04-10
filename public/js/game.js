@@ -222,8 +222,6 @@ var playState = {
         socket.emit('askCards');
         //console.log("ASK CARDS CLIENT");
 
-
-
     },
     dealCards: function(data){
     //console.log("GOT "+data.length + " CARDS FROM THE SERVER");
@@ -487,53 +485,8 @@ var playState = {
     },
 
     clientSideCheckMove: function(card){
-
-        if(!turn) {
-            self.resetCardsActive();
-            return false;
-        }
-
-        // If player has a debt than prevent him to place any others cards until debt is payed
-        if( hasDebt ){
-            if( card._value != 0 && card._value != 2){
-                self.resetCardsActive();
-                return false;
-            }
-        }
-
-        // Re-Allow the player to draw cards again, might have been disabled
-        self.enableDraw(true);
-
-        if( jackActive ){
-            if( card._suit != jackSuit && card._value != 0 && card._value != 11){
-                self.resetCardsActive();
-                return false;
-            }
-        }
-
-
-        var lastCard = self.getLastCard();
-
-        //console.log(lastCard);
-        if( !jackActive ) {
-            if (!rules.check(card, lastCard)) {
-                self.resetCardsActive();
-                return false;
-            }
-        }
-
-        // Cannot end with special card
-        if( items.length == 1){
-            if( [0,1,2,7,8,11].indexOf(card._value) != -1){
-                self.resetCardsActive();
-                return false;
-            }
-
-        }
-
         // Todo: check rules
         return true;
-
     },
 
     place: function(card){

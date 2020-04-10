@@ -1,7 +1,14 @@
+const HandType = {
+    NORMAL: "normal",
+    BLIND: "blind",
+    TABLE: "table"
+}
 var Player = function(id, nickname, socketid){
     this._id = id;
     this._nickname = nickname;
     this._hand = [];
+    this._blind = [];
+    this._table = [];
     // Keep track if the player has pressed the ready button in lobby
     this._ready = false;
     this._socketid = socketid;
@@ -18,22 +25,48 @@ Player.prototype.getId = function(){
     return this._id;
 }
 
-Player.prototype.give = function(cards) {
-    console.log(cards);
-    if( cards == null || typeof cards.length == "undefined")
-        return false;
-
-    for(var i = 0; i < cards.length; i++) {
-        console.log('given card to player '+ this._nickname);
-        this._hand.push(cards[i]);
+Player.prototype.getHand = function(type) {
+    switch (type){
+        case HandType.NORMAL:
+            return this._hand;
+        case HandType.BLIND:
+            return this._blind;
+        case HandType.TABLE:
+            return this._table;
+        default:
+            console.log("Error couldn't find hand with type " + type)
     }
 }
 
-Player.prototype.take = function(card){
+Player.prototype.getAllCards = function() {
+    cards = []
+    for (let type of Object.values(HandType)){
+        cards.push(this.getHand(type));
+    }
+    return cards;
+}
 
-    for(var i = 0; i < this._hand.length; i++){
+Player.prototype.give = function(cards, type=HandType.NORMAL) {
+    console.log("Giving cards " + type);
+    if( cards == null || typeof cards.length == "undefined")
+        return false;
 
-        var handCard = this._hand[i];
+    var hand = this.getHand(type);
+    //console.log("to this hand " + hand);
+
+    for(var i = 0; i < cards.length; i++) {
+        //console.log('given card to player '+ this._nickname);
+        hand.push(cards[i]);
+    }
+}
+
+Player.prototype.take = function(card, type=HandType.NORMAL){
+
+    var hand = this.getHand(type)
+
+    for(var i = 0; i < hand.length; i++){
+
+        var handCard = hand[i];
 
         if( handCard._value != card._value){
             continue;
@@ -43,8 +76,7 @@ Player.prototype.take = function(card){
             continue;
         }
 
-        this._hand.splice(i, 1);
-
+        hand.splice(i, 1);
     }
 }
 
@@ -62,11 +94,7 @@ Player.prototype.isReady = function(){
     return this._ready;
 }
 
-Player.prototype.getHand = function(){
-    return this._hand;
-}
-
-Player.prototype.hasCard = function(card){
+Player.prototype.hasCard = function(card, type=HandType.NORMAL){
     // We receive the input from the client, so it's unsure if
     // we get the right data to check the card in hand
     console.log('check: ', card._suit, card._value);
@@ -82,10 +110,12 @@ Player.prototype.hasCard = function(card){
         return false;
     }
 
-    // Assume we have all the necessary data here
-    for(var i = 0; i < this._hand.length; i++){
+    var hand = this.getHand(type)
 
-        var handCard = this._hand[i];
+    // Assume we have all the necessary data here
+    for(var i = 0; i < hand.length; i++){
+
+        var handCard = hand[i];
 
         if( handCard._value != card._value){
             console.log('Not same value', card._value, handCard._value);
@@ -113,5 +143,8 @@ Player.prototype.checkDone = function(){
 
 Player.prototype.removeCards = function(){
     this._hand = [];
+    this._table = [];
+    this._blind = [];
 }
-module.exports = Player;
+exports.Player = Player;
+exports.HandType = HandType
