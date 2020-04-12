@@ -1,6 +1,7 @@
 var Deck = function( cards, eventEmitter ){
   this._cards = cards;
   this._graveYard = [];
+  this._burnt = [];
   this._eventEmitter = eventEmitter;
 }
 
@@ -29,18 +30,7 @@ Deck.prototype.isEmpty = function(){
 
 }
 
-// Take X amount of cards from the deck
-Deck.prototype.take = function(amount) {
-
-  if( !this.canTake() )
-    return false;
-
-  var cardsTaken = this.takeAmount(amount);
-
-  return cardsTaken;
-}
-
-Deck.prototype.takeAmount = function(amount){
+Deck.prototype.take = function(amount){
 
   var cardsTaken = [];
 
@@ -59,19 +49,11 @@ Deck.prototype.takeAmount = function(amount){
 
 Deck.prototype.takeOne = function(){
 
-  if( this.isEmpty()){
-
-    if( this.canReshuffle() ) {
-
-      this.reshuffleCards();
-      return this.takeOne();
-    }
-
+  if( this.canTake()){
     return false;
   }
 
   return this._cards.pop();
-
 }
 
 Deck.prototype.place = function(card){
@@ -81,11 +63,62 @@ Deck.prototype.place = function(card){
   this._graveYard.push(card);
 }
 
+Deck.prototype.placeCards = function(cards){
+  for(let card of cards) {
+    this.place(card);
+  }
+}
+
+Deck.prototype.getLastCards = function(num) {
+  let returnCards = [];
+  for (let x = this._graveYard.length - 1; x >= 0; x--) {
+    returnCards.unshift(this._graveYard[x]);
+  }
+  return returnCards;
+}
+
 Deck.prototype.getLastCard = function(){
   if( this._graveYard.length == 0)
     return null;
 
-  return this._graveYard[ this._graveYard.length-1 ];
+  return this.getLastCards(1);
+}
+
+Deck.prototype.getLastVisibleCard = function() {
+  for (let x = this._graveYard.length - 1; x >= 0; x--) {
+    let card = this._graveYard[x];
+    if (card.getSpecial() != "INVISIBLE") {
+      return card;
+    }
+  }
+
+  return false;
+}
+
+Deck.prototype.getLastCardsOfValue = function(cardValue) {
+  let cards = [];
+  for (let x = this._graveYard.length - 1; x >= 0; x--) {
+    let card = this._graveYard[x];
+    if (card._value !== cardValue) {
+      break;
+    }
+    cards.push(card);
+  }
+
+  return cards;
+}
+
+Deck.prototype.burnCards = function() {
+  let card;
+  while (card = this._graveYard.unshift()) {
+    this._burnt.push(card);
+  }
+}
+
+Deck.prototype.getAndEmptyGraveyard = function() {
+  let cards = this._graveYard;
+  this._graveYard = [];
+  return cards;
 }
 
 Deck.prototype.reshuffleCards = function(take){
@@ -125,10 +158,6 @@ Deck.prototype.returnCards = function(cards){
 }
 
 Deck.prototype.canTake = function(){
-  return this._cards.length > 0 || this.canReshuffle();
-}
-
-Deck.prototype.canReshuffle = function(){
-  return this._graveYard.length > 1;
+  return this.isEmpty();
 }
 module.exports = Deck;

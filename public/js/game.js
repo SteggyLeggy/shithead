@@ -1,15 +1,56 @@
-var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game');
+const CARD_WIDTH = 140;
+const CARD_HEIGHT = 190;
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600
+
+var game = new Phaser.Game(GAME_WIDTH, GAME_HEIGHT, Phaser.AUTO, 'game');
+
+const HAND_POSITION = {
+    x: (GAME_WIDTH / 2),
+    y: GAME_HEIGHT, // - (CARD_HEIGHT / 2) - 20,
+    spacingX: 40
+}
+
+const BLIND_POSITION = {
+    x: (GAME_WIDTH / 2),
+    y: HAND_POSITION.y - CARD_HEIGHT - 20,
+    spacingX: CARD_WIDTH + 10,
+    tableShiftX: 10,
+    tableShiftY: 5
+}
+
+const GRAVEYARD_POSITION = {
+    x: 20,
+    y: 20,
+    spacingX: 1,
+    spacingY: 1
+}
+
+const DECK_POSITION = {
+    x: GAME_WIDTH - (CARD_WIDTH - 20),
+    y: 20
+}
 
 var loaded = false;
 var sprite;
-var items;
+var handCards = [];
+var tableCards = [];
+var blindCardCount = 0;
+var graveyardCards = [];
+var deckCardCount = 0;
+var burntCardCount = 0;
+
+var handCardsGroup;
+var tableCardsGroup;
+var blindCardsGroup;
+var graveyardCardsGroup;
+var deckCardsGroup;
+var burntCardGroup;
+
 var button;
-var x = 0;
-var y = 0;
-var cardWidth = 140;
-var cardHeight = 190;
+
 var self;
-var spacing = cardWidth;
+var spacing = CARD_WIDTH;
 var cardsInView = 5;
 var currentView = 0;
 var tableCards = null;
@@ -28,692 +69,7 @@ var soundPlace = null;
 var soundSlide = null;
 var soundShuffle = null;
 
-var jackActive = false;
-var jackSuit = null;
-
-var suitsButtons = null;
 var drawEnabled = true;
-var loadState = {
-
-
-    preload: function(){
-        //console.log('start loading');
-        var loadingLabel = game.add.text(80, 150, 'loading...', {
-            font: '30px Courier',
-            fill: '#ffffff'
-        });
-
-        game.load.audio('lobbyMusic', ['/audio/lobby-music.mp3', '/audio/lobby-music.ogg']);
-
-        game.load.audio('soundPlace', ['/audio/card-place.mp3', '/audio/card-place.ogg']);
-        game.load.audio('soundSlide', ['/audio/card-slide.mp3', '/audio/card-slide.ogg']);
-        game.load.audio('soundShuffle', ['/audio/card-shuffle.mp3', '/audio/card-shuffle.ogg']);
-
-        game.load.image('backgroundLobby','/images/background-lobby.jpg');
-        game.load.image('playTable','/images/play-table.jpg');
-        game.load.image('skipTurn','/images/skip-turn.png');
-        game.load.image('takeCards','/images/take-cards.png');
-
-        game.load.image('btnClubs','/images/btn-clubs.png');
-        game.load.image('btnDiamonds','/images/btn-diamonds.png');
-        game.load.image('btnHearts','/images/btn-hearts.png');
-        game.load.image('btnSpades','/images/btn-spades.png');
-
-        game.load.image('back','/images/cardBack_red2.png');
-        game.load.image('clubs2','/images/cardClubs2.png');
-        game.load.image('clubs3','/images/cardClubs3.png');
-        game.load.image('clubs4','/images/cardClubs4.png');
-        game.load.image('clubs5','/images/cardClubs5.png');
-        game.load.image('clubs6','/images/cardClubs6.png');
-        game.load.image('clubs7','/images/cardClubs7.png');
-        game.load.image('clubs8','/images/cardClubs8.png');
-        game.load.image('clubs9','/images/cardClubs9.png');
-        game.load.image('clubs10','/images/cardClubs10.png');
-        game.load.image('clubsA','/images/cardClubsA.png');
-        game.load.image('clubsJ','/images/cardClubsJ.png');
-        game.load.image('clubsK','/images/cardClubsK.png');
-        game.load.image('clubsQ','/images/cardClubsQ.png');
-        game.load.image('diamonds2','/images/cardDiamonds2.png');
-        game.load.image('diamonds3','/images/cardDiamonds3.png');
-        game.load.image('diamonds4','/images/cardDiamonds4.png');
-        game.load.image('diamonds5','/images/cardDiamonds5.png');
-        game.load.image('diamonds6','/images/cardDiamonds6.png');
-        game.load.image('diamonds7','/images/cardDiamonds7.png');
-        game.load.image('diamonds8','/images/cardDiamonds8.png');
-        game.load.image('diamonds9','/images/cardDiamonds9.png');
-        game.load.image('diamonds10','/images/cardDiamonds10.png');
-        game.load.image('diamondsA','/images/cardDiamondsA.png');
-        game.load.image('diamondsJ','/images/cardDiamondsJ.png');
-        game.load.image('diamondsK','/images/cardDiamondsK.png');
-        game.load.image('diamondsQ','/images/cardDiamondsQ.png');
-        game.load.image('hearts2','/images/cardHearts2.png');
-        game.load.image('hearts3','/images/cardHearts3.png');
-        game.load.image('hearts4','/images/cardHearts4.png');
-        game.load.image('hearts5','/images/cardHearts5.png');
-        game.load.image('hearts6','/images/cardHearts6.png');
-        game.load.image('hearts7','/images/cardHearts7.png');
-        game.load.image('hearts8','/images/cardHearts8.png');
-        game.load.image('hearts9','/images/cardHearts9.png');
-        game.load.image('hearts10','/images/cardHearts10.png');
-        game.load.image('heartsA','/images/cardHeartsA.png');
-        game.load.image('heartsJ','/images/cardHeartsJ.png');
-        game.load.image('heartsK','/images/cardHeartsK.png');
-        game.load.image('heartsQ','/images/cardHeartsQ.png');
-        game.load.image('spades2','/images/cardSpades2.png');
-        game.load.image('spades3','/images/cardSpades3.png');
-        game.load.image('spades4','/images/cardSpades4.png');
-        game.load.image('spades5','/images/cardSpades5.png');
-        game.load.image('spades6','/images/cardSpades6.png');
-        game.load.image('spades7','/images/cardSpades7.png');
-        game.load.image('spades8','/images/cardSpades8.png');
-        game.load.image('spades9','/images/cardSpades9.png');
-        game.load.image('spades10','/images/cardSpades10.png');
-        game.load.image('spadesA','/images/cardSpadesA.png');
-        game.load.image('spadesJ','/images/cardSpadesJ.png');
-        game.load.image('spadesK','/images/cardSpadesK.png');
-        game.load.image('spadesQ','/images/cardSpadesQ.png');
-        game.load.image('joker','/images/cardJoker.png');
-
-    },
-
-    create: function(){
-        loaded = true;
-        game.state.start('lobby');
-    }
-};
-
-var lobbyState = {
-
-
-    create: function(){
-
-        // Add background
-        game.add.sprite( 0, 0, 'backgroundLobby');
-
-        music = game.add.audio('lobbyMusic');
-        music.loop = true;
-        music.play();
-
-    },
-
-    startGame: function(){
-        //console.log("LOBBY TRIGGER START GAME");
-        game.state.start('play');
-    }
-};
-var playState = {
-
-    restart: function(){
-        resetGlobalVars();
-        game.state.start('lobby');
-    },
-
-    stop: function(){
-        game.state.start('gameOver');
-    },
-
-    create: function(){
-
-        if( music != null)
-            music.stop();
-
-        soundPlace = game.add.audio('soundPlace');
-        soundSlide = game.add.audio('soundSlide');
-        soundShuffle = game.add.audio('soundShuffle');
-
-        playState.started = true;
-        game.add.sprite( 0, 0, 'playTable');
-        self = playState;
-        //console.log("STARTING GAME");
-        //this.dealCards();
-        //x = (game.world.centerX - (cardWidth/2 ) );
-        y = ( game.world.height - cardHeight + 60);
-
-        rectLeft = game.add.button(0,0);
-        rectLeft.width = 140;
-        rectLeft.height = 190;
-        rectLeft.x = 0 - cardWidth + 40;
-        rectLeft.y = game.world.height - rectLeft.height + 60;
-        rectLeft.onInputDown.add(playState.onClickRectLeft);
-        rectLeft.alpha = 0;
-        rectLeft.visible = false;
-
-        rectRight = game.add.button(0,0);
-        rectRight.width = 140;
-        rectRight.height = 190;
-        rectRight.x = game.world.width - rectRight.width;
-        rectRight.y = game.world.height - rectRight.height + 60;
-        rectRight.onInputDown.add(playState.onClickRectRight);
-        rectRight.alpha = 0;
-        rectRight.visible = false;
-
-
-        suitsButtons = game.add.group();
-        var button;
-
-        button = game.add.button(70,70 , 'btnClubs');
-        button._suit = 'clubs';
-        button.onInputDown.add(playState.onClickSuitClubs);
-        suitsButtons.add(button);
-
-        button = game.add.button(10,70, 'btnDiamonds');
-        button._suit = 'diamonds';
-        button.onInputDown.add(playState.onClickSuitDiamonds);
-        suitsButtons.add(button);
-
-        button = game.add.button(70,10, 'btnHearts');
-        button._suit = 'hearts';
-        button.onInputDown.add(playState.onClickSuitHearts);
-        suitsButtons.add(button);
-
-        button = game.add.button(10,10, 'btnSpades');
-        button._suit = 'spades';
-        button.onInputDown.add(playState.onClickSuitSpades);
-        suitsButtons.add(button);
-
-        suitsButtons.x = 170;
-        suitsButtons.y = 230;
-        suitsButtons.visible = false;
-
-        self.reshuffle();
-
-        self.placeDeckCard();
-
-        socket.emit('askCards');
-        //console.log("ASK CARDS CLIENT");
-
-    },
-    dealCards: function(data){
-    //console.log("GOT "+data.length + " CARDS FROM THE SERVER");
-        //items = new Phaser.Group(this.game, null, 'kaarten', true);
-        items = game.add.group();
-        //console.log(rectLeft);
-
-        for( var i = 0; i < data.length; i++){
-            // For some reason this doesn't work :/
-            //    playState.actionOnClick();
-
-            // So yeah
-            //console.log(data[i][0]);
-            var cardKey = cardTranslator.translate(data[i]._value, data[i]._suit);
-            //console.log(cardKey);
-            playState.giveCard(cardKey, data[i]._value, data[i]._suit);
-        }
-
-    },
-
-    update: function(){
-
-    },
-
-    yourTurn: function(){
-        turn = true;
-        drawEnabled = true;
-        self.renderTurnText("It's your turn!");
-        self.addSkipButton();
-    },
-
-    newTurn: function(player){
-        turn = false;
-        drawEnabled = false;
-        self.renderTurnText("it's "+player._nickname+"'s turn" );
-        self.removeSkipButton();
-        self.removeTakeCardsButton();
-    },
-
-    renderTurnText: function(text){
-
-        if( turnText != null)
-            turnText.destroy();
-
-        turnText = game.add.text(10, 10, text, {
-            font: '30px Arial',
-            fill: '#ffffff'
-        });
-    },
-
-    giveCard: function(cardKey, value, suit){
-
-        //console.log(item);
-        //items.create( x, y, item);
-        var button = game.make.button(x, y, cardKey, playState.onCardClick);
-        button._value = value;
-        button._suit = suit;
-        // Check to see if the card is already clicked
-        button.active = false;
-        items.add(button);
-        x += spacing;
-
-
-
-        playState.shiftCards();
-    },
-    shiftCards: function(){
-
-        var totalCards = items.length;
-        var totalLength = totalCards * cardWidth;
-        //console.log(totalCards);
-        //console.log(totalLength);
-        //console.log("CurrentView: "+currentView);
-        //console.log('total lenght: '+ totalLength);
-
-        if( totalLength <= game.world.width) {
-            var newX = (game.world.width - totalLength) / 2;
-            //console.log(newX);
-
-            items.x = (newX);
-            playState.resetCardsPlacement();
-
-        }
-        else {
-            items.x = 0;
-            var increment = cardWidth + ((game.world.width - totalLength) / totalCards);
-
-            var newCardX = 0;
-            var n = 0;
-
-
-            items.forEachExists(function (item) {
-
-                //console.log(n);
-
-                if (n < currentView || n == 0){
-                    // Dirty trick to skip the first
-                    newCardX = 0;
-                }
-
-                else if( n == currentView ){
-                    //console.log("CANCER");
-                    newCardX = 40;
-                }
-
-
-
-                else if(  n >= (currentView + cardsInView)){
-
-                    newCardX = (cardWidth * 5) - 40;
-                }
-
-                else {
-
-                    newCardX += cardWidth;
-                }
-
-                item.x = newCardX;
-
-                n++;
-            });
-
-
-        }
-
-        playState.checkView();
-    },
-
-    onCardClick: function(){
-
-        // Not your turn buddy!
-        if(!turn)
-            return false;
-
-        if( this.active ){
-            //console.log('Play this card');
-            this.active = false;
-            this.y +=  60;
-
-
-
-        }
-        else{
-            //console.log('You clicked this card the first time');
-            playState.resetCardsActive();
-            this.active = true;
-            this.y -= 60;
-        }
-    },
-
-    onClickRectLeft: function(){
-        //console.log('Clicked left button rectangle');
-
-        if( currentView == 0)
-            return false;
-
-        currentView--;
-        //console.log(currentView);
-
-        playState.shiftCards();
-        playState.resetCardsActive();
-    },
-
-    onClickRectRight: function(){
-
-        if( (currentView + cardsInView + 1) > items.length )
-            return false;
-
-        currentView++;
-        //console.log(currentView);
-        playState.shiftCards();
-        playState.resetCardsActive();
-    },
-
-    checkView: function(){
-        //console.log("Checking view");
-
-        // Hide all buttons by default
-        rectRight.visible = false;
-        rectLeft.visible = false;
-
-        // If we have more cards in our hand than we can see and have some cards in a pile
-        // on right side of the screen then show the button
-        if( items.length > cardsInView && (currentView + cardsInView) < items.length ){
-            rectRight.visible = true;
-            game.world.bringToTop(rectRight);
-            //console.log('Show button right');
-        }
-
-        if( items.length > cardsInView && currentView > 0){
-            rectLeft.visible = true;
-            game.world.bringToTop(rectLeft);
-            //console.log('Show button left');
-        }
-    },
-
-    resetCardsActive: function(){
-        //console.log('reset other active cards');
-        items.forEachExists(function (item) {
-
-            //console.log(item.active);
-            if( item.active == true ) {
-                item.active = false;
-                item.y += 60;
-            }
-        });
-    },
-    onClickTableCard: function(){
-
-        var card = playState.getActiveCard();
-
-       // console.log(card);
-        if( card == null) {
-            return false;
-        }
-        console.log('Click table');
-        if(self.clientSideCheckMove(card) ) {
-            console.log('check card');
-            playState.addCardToTable(card);
-            //console.log(socket);
-            socket.emit('move', {
-                _value: card._value,
-                _suit: card._suit
-            });
-        }
-
-    },
-
-    getActiveCard: function(){
-        if( typeof items == "undefined" || items == null)
-            return false;
-
-        var card = null;
-        items.forEachExists(function (item) {
-            ///console.log(item);
-            if( item.active == true ) {
-                card = item;
-            }
-        });
-
-        return card;
-    },
-
-    addCardToTable: function(card) {
-        // Not your turn buddy
-        if(!turn)
-            return false;
-
-        self.place(card);
-
-        card.destroy();
-        soundPlace.play();
-        playState.shiftCards();
-    },
-    resetCardsPlacement: function(){
-        var x = 0;
-        items.forEach(function(item){
-            item.x = x;
-            x+= spacing;
-        });
-    },
-
-    clientSideCheckMove: function(card){
-        // Todo: check rules
-        return true;
-    },
-
-    place: function(card){
-        var tableCard = game.add.button(0,0, card.key);
-        tableCard.width = 140;
-        tableCard.height = 190;
-        tableCard.x = game.world.centerX - cardWidth / 2;
-        tableCard.y = game.world.centerY - cardHeight / 2;
-        tableCard.onInputDown.add(playState.onClickTableCard);
-        tableCard._value = card._value;
-        tableCard._suit = card._suit;
-
-        tableCards.add(tableCard);
-        soundPlace.play();
-    },
-
-    serverPlace: function(card){
-
-        console.log(card);
-        card.key = cardTranslator.translate(card._value, card._suit);
-
-        self.place(card);
-    },
-
-    getLastCard: function(){
-        var lastCard = tableCards.getChildAt( tableCards.length - 1);
-        //console.log(lastCard);
-        if(typeof lastCard._value == "undefined")
-            return null;
-
-        return lastCard;
-    },
-    onClickDeckCard: function(){
-        if(!turn || !drawEnabled)
-            return false;
-        // Prevent from clicking again
-        drawEnabled = false;
-        self.resetCardsActive();
-        socket.emit('takeCard');
-
-    },
-
-    endTurn: function(){
-        turn = false;
-        self.removeSkipButton();
-    },
-    takenCards: function(cards){
-
-            soundSlide.play();
-            self.addCardsToHand(cards);
-            self.endTurn();
-
-    },
-
-    addCardsToHand: function(cards){
-        for( var i = 0; i < cards.length; i++){
-            // For some reason this doesn't work :/
-            //    playState.actionOnClick();
-
-            // So yeah
-            //console.log(data[i][0]);
-            var cardKey = cardTranslator.translate(cards[i]._value, cards[i]._suit);
-            //console.log(cardKey);
-            playState.giveCard(cardKey, cards[i]._value, cards[i]._suit);
-        }
-    },
-    reshuffle: function(lastCard){
-
-        soundShuffle.play();
-        if( tableCards != null){
-            tableCards.destroy();
-        }
-
-        tableCards = game.add.group();
-        // Add an empty card to have something clickable if the table is empty
-        var defaultCard = game.add.button(0,0);
-        defaultCard.width = 140;
-        defaultCard.height = 190;
-        defaultCard.x = game.world.centerX - cardWidth / 2;
-        defaultCard.y = game.world.centerY - cardHeight / 2;
-        defaultCard.onInputDown.add(playState.onClickTableCard);
-        defaultCard.alpha = 0;
-
-        tableCards.add(defaultCard);
-        if( lastCard != null) {
-            self.serverPlace(lastCard);
-        }
-    },
-
-    removeDeck: function(){
-        if(deckCard != null) {
-            deckCard.destroy();
-            deckCard = null;
-
-
-        }
-    },
-    placeDeckCard: function(){
-        deckCard = game.add.button(0,0, 'back');
-        deckCard.x = game.world.width - cardWidth - 16;
-        deckCard.y = 14;
-        deckCard.onInputDown.add(playState.onClickDeckCard);
-    },
-
-    addSkipButton: function(){
-        console.log(deckCard);
-        if( deckCard == null ) {
-            skipTurn = game.add.button(0, 0, 'skipTurn');
-            skipTurn.x = game.world.width - cardWidth - 150;
-            skipTurn.y = 280;
-            skipTurn.onInputDown.add(function(){
-                socket.emit('skipTurn');
-            });
-        }
-    },
-
-    removeSkipButton: function(){
-        if( skipTurn != null){
-            skipTurn.destroy();
-        }
-    },
-
-    addTakeCardsButton: function(){
-
-            takeCards = game.add.button(0, 0, 'takeCards');
-            takeCards.x = game.world.width - cardWidth - 150;
-            takeCards.y = 340;
-            takeCards.onInputDown.add(function(){
-                socket.emit('takeCards');
-            });
-
-    },
-
-    removeTakeCardsButton: function(){
-        hasDebt = false;
-        if( takeCards != null){
-            takeCards.destroy();
-        }
-    },
-
-    hasDebt: function(){
-        // Don't allow the player to bypass the debt by drawing a card
-        self.enableDraw(false);
-        hasDebt = true;
-        this.addTakeCardsButton();
-    },
-
-    paidDebt: function(cards){
-        self.enableDraw(true);
-        self.addCardsToHand(cards);
-        self.removeTakeCardsButton();
-    },
-
-    onClickSuitButton: function(suit){
-        socket.emit('setSuit', suit);
-        self.hideSuitsButtons();
-    },
-
-    onClickSuitClubs: function(){
-        self.onClickSuitButton('clubs');
-    },
-    onClickSuitDiamonds: function(){
-        self.onClickSuitButton('diamonds');
-    },
-    onClickSuitHearts: function(){
-        self.onClickSuitButton('hearts');
-    },
-    onClickSuitSpades: function(){
-        self.onClickSuitButton('spades');
-    },
-
-    showSuitsButtons: function(){
-        turn = false;
-        suitsButtons.forEach( function(item){
-            item.visible = true;
-        } );
-
-        suitsButtons.visible = true;
-        suitsButtons.visible = true;
-    },
-
-    hideSuitsButtons: function(){
-
-        suitsButtons.forEach( function(item){
-            item.visible = false;
-        } );
-
-        suitsButtons.visible = false;
-    },
-
-    showSuitButton: function(suit){
-
-        jackActive = true;
-        jackSuit = suit;
-
-        suitsButtons.forEach( function(item){
-            if( item._suit == suit){
-                item.visible = true;
-                return false;
-            }
-            item.visible = false;
-        } );
-
-        suitsButtons.visible = true;
-    },
-
-    endJackEffect: function(){
-        jackActive = false;
-        jackSuit = null;
-
-        self.hideSuitsButtons();
-    },
-
-    enableDraw: function(bool){
-        drawEnabled = bool;
-    }
-
-};
-
-
-var gameOverState = {
-
-    create: function(){
-        // Add background
-        game.add.sprite( 0, 0, 'backgroundLobby');
-    }
-}
 
 game.state.add('load', loadState);
 game.state.add('lobby', lobbyState);
@@ -722,16 +78,17 @@ game.state.add('gameOver', gameOverState);
 
 game.state.start('load');
 
-
 function resetGlobalVars(){
     loaded = false;
     sprite = null;
-    items = null;
+
+    handCards = [];
+    tableCards = [];
+    blindCards = [];
+    deckCardCount = 0;
+    graveyardCards = [];
+
     button = null;
-    x = 0;
-    y = 0;
-    cardWidth = 140;
-    cardHeight = 190;
     self = null;
     spacing = cardWidth;
     cardsInView = 5;
@@ -752,9 +109,5 @@ function resetGlobalVars(){
     soundSlide = null;
     soundShuffle = null;
 
-    jackActive = false;
-    jackSuit = null;
-
-    suitsButtons = null;
     drawEnabled = true;
 }

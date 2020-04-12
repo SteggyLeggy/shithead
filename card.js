@@ -28,6 +28,10 @@ Card.FromSocket = function(socket_value){
     return new Card(socket_value._value, socket_value.suit);
 }
 
+Card.prototype.toString = function() {
+    return "<Card Value: " + this._value + " Suit: " + this._suit + ">"
+}
+
 Card.prototype.getSpecial = function(){
     switch(this._value) {
         case 2:
@@ -54,6 +58,13 @@ Card.prototype.isSpecial = function(){
 
 Card.prototype.isWild = function(){
     return [2, 3, 10].includes(this._value)
+}
+
+Card.prototype.isEqual = function(card){
+    if (card === undefined) {
+        return false;
+    }
+    return card._value === this._value && card._suit === this._suit;
 }
 
 module.exports = Card;

@@ -14,8 +14,10 @@ var Game = function(eventEmitter) {
   this._playersDone = [];
   this._deck = null;
   this._deckBuilder = new DeckBuilder();
+  this._discardPile = [];
   this._currentTurn = null;
   this._rotationReversed = false;
+  this._nominateRound = true;
 
   // End turn after placing card (modified by special effect)
   this._endTurn = true;
@@ -65,16 +67,18 @@ Game.prototype.dealCards = function(){
     for (let type of Object.values(HandType)) {
         for( var i = 0; i < this._initialCardCount; i++ ){
             for( var j = 0; j < this._players.length; j++ ){
-                var card = this._deck.take(1);
-                this._players[j].give(card, type);
+                let player = this._players[j];
+                let card = this._deck.take(1);
+                if (player._shithead == false && type == HandType.TABLE){
+                    player.give(card, HandType.NORMAL);
+                } else {
+                    player.give(card, type);
+                }
                 console.log("Dealt card " + card + " with type " + type + " to player " + this._players[j]._nickname);
             }
         }
     }
-    for( let j = 0; j < this._players.length; j++ ){
-        let player = this._players[j];
-        console.log("Player " + player._nickname + " has " + [player._hand.length,player._table.length, player._blind.length] + " cards");
-    }
+
     //return this._eventEmitter.emit('dealCards');
 }
 
@@ -111,6 +115,8 @@ Game.prototype.getPlayersClientSide = function(){
         var player = {
             nickname: this._players[i]._nickname,
             handCount: this._players[i].getHand(HandType.NORMAL).length,
+            blindCount: this._players[i].getHand(HandType.BLIND).length,
+            tableCards: this._players[i].getHand(HandType.TABLE),
             onTurn: (i == this._currentTurn),
             ready: this._players[i]._ready
         };
@@ -119,6 +125,21 @@ Game.prototype.getPlayersClientSide = function(){
     }
 
     return players;
+}
+
+Game.prototype.getPlayerById = function(playerId) {
+    for( var i = 0; i < this._players.length; i++){
+        if( this._players[i].getId() == playerId ){
+            return this._players[i]
+        }
+    }
+}
+
+Game.prototype.nominateTableCards = function(playerId, tableCards) {
+    let player = this.getPlayerById(playerId);
+    for (let card of tableCards) {
+        player.moveCard(card, HandType.NORMAL, HandType.TABLE);
+    }
 }
 
 Game.prototype.isStarted = function(){
@@ -158,75 +179,95 @@ Game.prototype.stop = function(){
 
 // Give the first turn to a random player
 Game.prototype.firstTurn = function(){
-    var randomIndex = Math.floor(Math.random()*this._players.length);
-    var randomPlayer = this._players[randomIndex];
-    this._currentTurn = randomIndex;
-    this._eventEmitter.emit('nextTurn', randomPlayer);
+    let lowestCard;
+    let lowestPlayer;
+    for (let player of this._players) {
+        for (let card of player.getHand(HandType.NORMAL)) {
+            if (card.isSpecial()) {
+                continue;
+            }
+            if (lowestCard === undefined || (card._value < lowestCard._value)) {
+                lowestCard = card;
+                lowestPlayer = player;
+            }
+        }
+    }
+
+    console.log("Making first move with " + lowestPlayer.getNickname() + " with card " + lowestCard.toString())
+
+    this.move(lowestPlayer, [lowestCard])
 }
 
-Game.prototype.move = function(player, card){
-
-
+Game.prototype.move = function(player, cards){
+    
+    if (cards === undefined || cards.length === 0){
+        console.log(player._nickname + " didn't send any cards to play");
+        return false;       
+    }
 
     // User actually has the card
-    var playerHasCard = player.hasCard(card);
+    var playerHasCards = player.hasCards(cards);
 
-    if( !playerHasCard ){
-        console.log(player._nickname + " tried to place a card he/she does not have");
+    if( !playerHasCards ){
+        console.log(player._nickname + " tried to place a cards he/she does not have");
         return false;
     }
 
-
-    if( player.getHand().length == 1){
-        if( [0,1,2,7,8,11].indexOf(card._value) != -1){
-            console.log("can't end game with a special card");
-            return false;
+    // cards should all be the same value
+    let checkCard;
+    for (let card of cards) {
+        if (checkCard !== undefined) {
+            if (checkCard._value != card._value){
+                console.log(player.getNickname() + " tried to play cards of different values");
+                return false;
+            }
         }
-
+        checkCard = card;
     }
 
-    if( !this._jackActive ) {
-
-        this._endTurn = true;
-
-        if (!rules.check(card, this._deck.getLastCard(), rules)) {
-            console.log(player._nickname + " tried to place a card against the rules");
-            return false;
-        }
+    let lastGraveyardCards = this._deck.getLastCardsOfValue(checkCard._value);
+    if (lastGraveyardCards.length + cards.length > 4){
+        console.log(player.getNickname() + " tried to play move than 4 of the same type");
+        return false
+    } else if(lastGraveyardCards.length + cards.length === 4) {
+        player.takeCards(cards);
+        this._deck.placeCards(cards);     
+        self._deck.burnCards();
     }
 
-
-    // The player can only place "2's" and "jokers" when there is a debt
-    if( this._debt > 0){
-        if(card._value != 0 && card._value != 2){
-            console.log(player._nickname + " tried to place a card that is not a 2 or a joker");
-            return false;
+    if (!checkCard.isWild()){
+        let currentCard = this._deck.getLastVisibleCard();
+    
+        if (currentCard) {
+            if (currentCard.getSpecial() != "LOWER"){
+                if (checkCard._value < currentCard._value){
+                    console.log(player.getNickname() + " tried to play too LOW a card");
+                    return false;
+                }
+            } else {
+                if (checkCard._value > currentCard._value){
+                    console.log(player.getNickname() + " tried to play too HIGH a card");
+                    return false;
+                }                
+            }
         }
     }
-
-    if( this._jackActive ){
-
-        if( card._suit != this._jackSuit && card._value != 0 && card._value != 11 ){
-            console.log(player._nickname + " tried to place a card that is not allowed by the jack rule");
-            return false;
-        }
-
-        this._jackActive = false;
-        this._jackSuit = null;
-        this._eventEmitter.emit('endJackEffect');
-    }
-
-
 
     // Take the card from the player
-    player.take(card);
+    player.takeCards(cards);
 
     // Place card in the deck
-    this._deck.place(card);
+    this._deck.placeCards(cards);
+
+    if (this._deck.canTake()) {
+        player.give(this._deck.take(cards.length), HandType.NORMAL);
+    }
 
     this.checkDone(player);
 
-    this.triggerSpecialEffect(card, player);
+    this.triggerSpecialEffect(checkCard, cards.length, player);
+
+    this.nextTurn();
 
     return true;
 
@@ -269,15 +310,12 @@ Game.prototype.takeCards = function(player, amount) {
     this._endTurn = true;
     var cards = this._deck.take(amount);
 
-
     if( !cards){
         this._eventEmitter.emit('noCardsLeft', player);
         return false;
     }
 
-
     player.give(cards);
-
 
     console.log( player._nickname + " has taken "+cards.length + " cards");
     return cards;
@@ -307,15 +345,16 @@ Game.prototype.skipTurn = function(player){
     this.nextTurn();
 }
 
-Game.prototype.triggerSpecialEffect = function(card, player){
-
+Game.prototype.triggerSpecialEffect = function(card, count, player){
     if (card.isSpecial()) {
         var special = card.getSpecial()
         switch (special){
             case "SKIP":
-                this.setNextTurn();
+                for (let x = 0; x < count; x++){
+                    this.setNextTurn();
+                }
             case "BURN":
-                // Burn deck
+                this._deck.burnCards();
             case "REVERSE":
                 this.flipRotation();
         }
@@ -344,22 +383,6 @@ Game.prototype.payDebt = function(player){
     return cards;
 }
 
-Game.prototype.setSuit = function(suit){
-
-    if( !this._jackActive )
-        return false;
-
-    if( !this._deckBuilder.suitExists(suit)){
-        return false;
-    }
-
-    this._jackSuit = suit;
-    this._endTurn = true;
-
-    this.nextTurn();
-
-    return true;
-}
  Game.prototype.flipRotation = function(){
      if( this._rotationReversed ){
          this._rotationReversed = false;
@@ -379,10 +402,7 @@ Game.prototype.setNextTurn = function(){
 }
 
 Game.prototype.getNextTurn = function(){
-
-
     var next = this.getNextPlayer(this._currentTurn);
-
 
     if( typeof this._players[next] == "undefined"){
         return false;
@@ -405,10 +425,8 @@ Game.prototype.getNextPlayer = function(currentIndex){
         if( next > this._players.length -1){
             next = 0;
         }
-
     }
     else{
-
         next = --currentIndex;
         if (next < 0) {
             next = this._players.length - 1;
@@ -420,8 +438,6 @@ Game.prototype.getNextPlayer = function(currentIndex){
     }
 
     return next;
-
-
 }
 
 Game.prototype.notEnoughPlayers = function(){
@@ -443,6 +459,7 @@ Game.prototype.notEnoughPlayers = function(){
 }
 
 Game.prototype.currentTurnPlayer = function(){
+    console.log("Current turn is " + this._currentTurn + " which is player " + this._players[this._currentTurn])
     return this._players[this._currentTurn];
 }
 

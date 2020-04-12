@@ -6,8 +6,6 @@ html(lang="en")
         link(rel="stylesheet", href="/css/style.css", type="text/css")
         link(rel="stylesheet", href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css")
     body
-
-
         div(id="wrapper")
             div(id="playerSidebar")
                 ul
@@ -17,6 +15,8 @@ html(lang="en")
                     form
                         p choose a nickname:
                         input(id="name")
+                        p did you lose last game?
+                        input(id="shithead", type="checkbox")
                         button(type="submit") Join
                 div(id="lobby")
                     p(id="pc") Player count: #[span= playerCount]
@@ -41,6 +41,10 @@ html(lang="en")
         script(src="/socket.io/socket.io.js")
         script(src="/js/cardTranslator.js")
         script(src="/js/rules.js")
+        script(src="/js/game_states/load.js")
+        script(src="/js/game_states/lobby.js")
+        script(src="/js/game_states/play.js")
+        script(src="/js/game_states/game_over.js")
         script(src="/js/game.js")
         script.
             var socket = io();
@@ -93,7 +97,7 @@ html(lang="en")
             socket.on('specUpdate', function(data){
                 updatePlayerSidebar(data)
                 console.log(data);
-                playState.serverPlace(data.currentCard);
+                playState.serverUpdate(data);
             });
 
 
@@ -102,8 +106,6 @@ html(lang="en")
             }
 
             function updatePlayerSidebar(data){
-
-
                 $('#playerSidebar').show();
                 var element = $('#playerSidebar').find('ul');
                 element.html('');
@@ -231,6 +233,12 @@ html(lang="en")
                 socket.emit('gotHand');
             });
 
+            socket.on('giveTable', function(data){
+                console.log("SOCKET: GIVE TABLE");
+                playState.dealTable(data);
+                socket.emit('gotTable');
+            });
+
             socket.on('giveTurn', function(){
                 console.log("it's your turn");
                 playState.yourTurn();
@@ -341,7 +349,9 @@ html(lang="en")
                     if( name.length < 1 ){
                         return false;
                     }
-                    socket.emit('register', name);
+                    var shithead = $('#shithead').prop("checked");
+                    var data = {"name": name, "shithead": shithead}
+                    socket.emit('register', data);
                     return joined();
                 });
             });

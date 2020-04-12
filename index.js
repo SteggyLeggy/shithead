@@ -12,7 +12,7 @@ app.set('view engine', 'jade');
 app.use(express.static(path.join(__dirname, 'public')));
 
 var Game = require('./game.js');
-var { Player } = require('./player.js');
+var { Player, HandType } = require('./player.js');
 var Card = require('./card.js');
 var GameManager =  new Game(eventEmitter);
 
@@ -20,7 +20,7 @@ var nextUserId = 1;
 
 var timerWaitForPlayers = null;
 // Timeout in ms
-var timeoutTime = 30000;
+var timeoutTime = 120 * 1000;
 
 
 function getGameData(){
@@ -31,7 +31,9 @@ function getGameData(){
     }
 
     if( GameManager.isStarted() ){
-        data.currentCard =  GameManager._deck.getLastCard();
+        data.currentCards =  GameManager._deck.getLastCards(10);
+        data.deckCardsRemaining = GameManager._deck._cards.length;
+        data.burntCards = GameManager._deck._burnt.length;
     }
 
     return data;
@@ -101,19 +103,19 @@ io.on('connection', function(socket) {
 
 
     // What happens when the player has chosen a nickname
-    socket.on('register', function(name){
+    socket.on('register', function(data){
 
         if( typeof socket.player != "undefined" || GameManager.isStarted() )
             return false;
 
         // Create new player instance
-        socket.player = new Player(nextUserId, name, socket.id);
+        socket.player = new Player(nextUserId, data.name, socket.id, data.shithead);
 
         // Add player to the Game
         GameManager.addPlayer(socket.player);
 
         console.log(socket.player);
-        console.log( name + " joined the game");
+        console.log( data.name + " joined the game as shithead " + data.shithead);
 
         // Make sure that the next player gets a diffrent id
         nextUserId++;
@@ -191,8 +193,6 @@ io.on('connection', function(socket) {
         if(typeof socket.player == "undefined" || !GameManager.isStarted())
             return false;
 
-
-
         socket.player._inGame = true;
 
         // Count ready players
@@ -204,8 +204,6 @@ io.on('connection', function(socket) {
             }
         }
 
-
-
         if( readyPlayers == players.length){
             console.log('All players are ready to begin');
 
@@ -216,28 +214,28 @@ io.on('connection', function(socket) {
             if( !checkEndGame() ){
                 firstPlayerTurn();
             }
-
         }
         else{
             console.log(readyPlayers+' out of '+ players.length + ' players are ready');
             console.log('wait for other players..');
         }
-
     });
 
-    socket.on('move', function(card){
-        card = Card.FromSocket(card);
+    socket.on('move', function(cards){
+        receieved_cards = []
+        for (let card of cards) {
+            receieved_cards.push(Card.FromSocket(card));
+        }
         console.log('new move');
         if(typeof socket.player == "undefined" || !GameManager.isStarted())
             return false;
 
-        if( !GameManager.move(socket.player, card) ){
-            socket.emit('falseMove', card);
+        if( !GameManager.move(socket.player, receieved_cards) ){
+            socket.emit('falseMove', cards);
             return false;
         }
 
-
-        socket.broadcast.emit('placed', card);
+        socket.broadcast.emit('placed', cards);
 
         if( GameManager.allDone() ){
             // todo: End game
@@ -277,23 +275,11 @@ io.on('connection', function(socket) {
         sendUpdate();
     });
 
-    socket.on('setSuit', function(suit){
-
-        if( GameManager.setSuit(suit) ){
-            io.sockets.emit('suitSet', suit);
-        }
-
-    });
-
     socket.on('specGetUpdate', function(){
         var data = getGameData();
         socket.emit('specUpdate', data);
     });
-
-
 });
-
-
 
 // Let the client know that a player has left the game
 function playerLeftHandler(){
@@ -330,7 +316,6 @@ function waitForPlayersToStartGame (){
            }
        },
    timeoutTime);
-
 }
 
 // Check if conditions to end the game are met
@@ -415,15 +400,17 @@ function dealCardsHandler(socket){
     var players = GameManager.getPlayers();
     var socketPlayer = socket.player;
 
-
     for( var i = 0; i < players.length; i++){
         var player = players[i];
         if(socketPlayer._socketid == player._socketid) {
 
             console.log('Give hand to ' + player._nickname);
-            var hand = player.getHand();
-            io.sockets.connected[player._socketid].emit('giveHand', hand);
-
+            data = {
+                hand: player.getHand(HandType.NORMAL),
+                table: player.getHand(HandType.TABLE),
+                blindLength: player.getHand(HandType.BLIND).length
+            };
+            io.sockets.connected[player._socketid].emit('giveHand', data);
         }
     }
 }

@@ -3,7 +3,7 @@ const HandType = {
     BLIND: "blind",
     TABLE: "table"
 }
-var Player = function(id, nickname, socketid){
+var Player = function(id, nickname, socketid, shithead){
     this._id = id;
     this._nickname = nickname;
     this._hand = [];
@@ -15,6 +15,7 @@ var Player = function(id, nickname, socketid){
     this._inGame = false;
     // Check if a player has placed al his cards
     this._done = false;
+    this._shithead = shithead;
 };
 
 Player.prototype.getNickname = function(){
@@ -80,6 +81,12 @@ Player.prototype.take = function(card, type=HandType.NORMAL){
     }
 }
 
+Player.prototype.takeCards = function(cards, type=HandType.NORMAL) {
+    for (let card of cards){
+        this.take(card, type);
+    }
+}
+
 Player.prototype.ready = function () {
     console.log( this._nickname + " is ready");
     this._ready = true;
@@ -94,42 +101,52 @@ Player.prototype.isReady = function(){
     return this._ready;
 }
 
-Player.prototype.hasCard = function(card, type=HandType.NORMAL){
+Player.prototype.tableReady = function() {
+    return this._table.length == this._hand.length;
+}
+
+Player.prototype.moveCard = function(card, fromType, toType) {
+    if (this.hasCard(card, fromType)) {
+        this.take(card, fromType);
+        this.give(card, toType);
+    }
+}
+
+Player.prototype.hasCard = function(card, type=HandType.NORMAL) {
+    return this.hasCards([card], type);
+}
+
+Player.prototype.hasCards = function(cards, type=HandType.NORMAL){
     // We receive the input from the client, so it's unsure if
     // we get the right data to check the card in hand
-    console.log('check: ', card._suit, card._value);
-
-    if( typeof card._value == "undefined" ) {
-        console.log('NO VALUE');
-        return false;
-    }
-
-    // Added to make the joker card compatible
-    if( card._value != 0 && typeof card._suit == "undefined") {
-        console.log('No suit found with value of ' +card._value);
-        return false;
-    }
 
     var hand = this.getHand(type)
 
-    // Assume we have all the necessary data here
-    for(var i = 0; i < hand.length; i++){
-
-        var handCard = hand[i];
-
-        if( handCard._value != card._value){
-            console.log('Not same value', card._value, handCard._value);
-            continue;
+    let filteredHand = hand.filter(function(handCard, index, arr) {
+        for (let checkCard of cards) {
+            if (handCard.isEqual(checkCard)){
+                return true;
+            }
         }
+        return false;
+    });
 
-        else if( typeof handCard._suit != "undefined" && handCard._suit != card._suit){
-            console.log('Not same suit', card._suit, handCard._suit);
-            continue;
+    for (let checkCard of cards) {
+        let filteredIndex = -1;
+        for (let x = 0; x < filteredHand.length; x++){
+            let filterCard = filteredHand[x];
+            if (checkCard.isEqual(filterCard)){
+                filteredIndex = x;
+                break;
+            }
         }
-
-        return true;
-
+        if (filteredIndex < 0) {
+            return false;
+        }
+        filteredHand.splice(filteredIndex, 1);
     }
+    
+    return true;
 }
 
 Player.prototype.checkDone = function(){
