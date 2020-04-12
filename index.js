@@ -19,6 +19,7 @@ var GameManager =  new Game(eventEmitter);
 var nextUserId = 1;
 
 var timerWaitForPlayers = null;
+
 // Timeout in ms
 var timeoutTime = 120 * 1000;
 
@@ -221,6 +222,22 @@ io.on('connection', function(socket) {
         }
     });
 
+    socket.on('setTable', function(cards) {
+        if(typeof socket.player == "undefined" || socket.player.tableReady())
+            return false;
+        receieved_cards = []
+        for (let card of cards) {
+            receieved_cards.push(Card.FromSocket(card));
+        }
+        console.log("Got setTable from player " + socket.player.getNickname());
+        let result = GameManager.nominateTableCards(socket.player, receieved_cards);
+
+        if (result === true){
+            sendUpdate();
+        }
+        return result;
+    });
+
     socket.on('move', function(cards){
         receieved_cards = []
         for (let card of cards) {
@@ -312,11 +329,41 @@ function waitForPlayersToStartGame (){
            }
            // If conditions to end the game aren't met, give the first player the turn
            if( !checkEndGame() ){
-               firstPlayerTurn();
+               console.log("All players ready, waiting for them to set table cards")
+               waitForPlayersToSetTableCards();
            }
        },
    timeoutTime);
 }
+
+function waitForPlayersToSetTableCards (){
+    clearTimeout(timerWaitForPlayers);
+
+    timerWaitForPlayers = setTimeout(
+        function() {
+            var players = GameManager.getPlayers();
+
+            for( var i = 0; i < players.length; i++){
+                if( !players[i].tableReady()){
+                    var playerName = players[i]._nickname;
+                    var socketId = players[i]._socketid;
+                    GameManager.kickPlayerByIndex(i);
+                    console.log("Kicked player "+ playerName + " for not setting table cards");
+
+                    var socketPlayer = io.sockets.connected[socketId];
+                    socketPlayer.emit('kicked');
+                    // Disconnect the player from the server
+                    socketPlayer.disconnect();
+                }
+            }
+            // If conditions to end the game aren't met, give the first player the turn
+            if( !checkEndGame() ){
+               console.log("All players set table cards, starting first turn")
+               firstPlayerTurn();
+            }
+        },
+    timeoutTime);
+ }
 
 // Check if conditions to end the game are met
 function checkEndGame(){
@@ -437,6 +484,7 @@ function notEnoughPlayers(){
 function firstPlayerTurn(){
     // Give first turn to a random player
     GameManager.firstTurn();
+    sendUpdate();
 }
 
 // Send update to all clients about the game

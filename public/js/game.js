@@ -84,13 +84,14 @@ function resetGlobalVars(){
 
     handCards = [];
     tableCards = [];
-    blindCards = [];
+    blindCardCount = 0;
     deckCardCount = 0;
     graveyardCards = [];
+    burntCardCount = 0;
 
     button = null;
     self = null;
-    spacing = cardWidth;
+    spacing = CARD_WIDTH;
     cardsInView = 5;
     currentView = 0;
     tableCards = null;

@@ -124,12 +124,14 @@ html(lang="en")
                     html += "</li>";
                     element.append(html);
                 }
-
             }
 
             function updateGUI(data){
                 updatePlayerCount(data.playerCount);
                 updatePlayerList(data.players);
+                if (typeof playstate !== "undefined") {
+                    playstate.serverUpdate(data);
+                }
             }
 
             function chooseNickname(){
@@ -214,7 +216,7 @@ html(lang="en")
 
             socket.on('update', function(data){
                 console.log(data);
-                updatePlayerSidebar(data);
+                updateGUI(data);
             });
 
             socket.on('lateJoin', function(){
@@ -355,5 +357,3 @@ html(lang="en")
                     return joined();
                 });
             });
-
-

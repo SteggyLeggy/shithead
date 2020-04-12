@@ -106,10 +106,11 @@ Player.prototype.tableReady = function() {
 }
 
 Player.prototype.moveCard = function(card, fromType, toType) {
-    if (this.hasCard(card, fromType)) {
-        this.take(card, fromType);
-        this.give(card, toType);
+    if (!this.hasCard(card, fromType)) {
+        return false;
     }
+    this.take(card, fromType);
+    this.give(card, toType);
 }
 
 Player.prototype.hasCard = function(card, type=HandType.NORMAL) {
@@ -145,7 +146,7 @@ Player.prototype.hasCards = function(cards, type=HandType.NORMAL){
         }
         filteredHand.splice(filteredIndex, 1);
     }
-    
+
     return true;
 }
 

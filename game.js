@@ -135,11 +135,16 @@ Game.prototype.getPlayerById = function(playerId) {
     }
 }
 
-Game.prototype.nominateTableCards = function(playerId, tableCards) {
-    let player = this.getPlayerById(playerId);
+Game.prototype.nominateTableCards = function(player, tableCards) {
+    let result = true;
     for (let card of tableCards) {
-        player.moveCard(card, HandType.NORMAL, HandType.TABLE);
+        result = player.moveCard(card, HandType.NORMAL, HandType.TABLE);
+        if (result === false)
+        {
+            return result
+        }
     }
+    return result
 }
 
 Game.prototype.isStarted = function(){
@@ -199,10 +204,10 @@ Game.prototype.firstTurn = function(){
 }
 
 Game.prototype.move = function(player, cards){
-    
+
     if (cards === undefined || cards.length === 0){
         console.log(player._nickname + " didn't send any cards to play");
-        return false;       
+        return false;
     }
 
     // User actually has the card
@@ -231,13 +236,13 @@ Game.prototype.move = function(player, cards){
         return false
     } else if(lastGraveyardCards.length + cards.length === 4) {
         player.takeCards(cards);
-        this._deck.placeCards(cards);     
+        this._deck.placeCards(cards);
         self._deck.burnCards();
     }
 
     if (!checkCard.isWild()){
         let currentCard = this._deck.getLastVisibleCard();
-    
+
         if (currentCard) {
             if (currentCard.getSpecial() != "LOWER"){
                 if (checkCard._value < currentCard._value){
@@ -248,7 +253,7 @@ Game.prototype.move = function(player, cards){
                 if (checkCard._value > currentCard._value){
                     console.log(player.getNickname() + " tried to play too HIGH a card");
                     return false;
-                }                
+                }
             }
         }
     }
