@@ -1,3 +1,15 @@
+/* global cardTranslator, game, socket, CARD_WIDTH, CARD_HEIGHT, HAND_POSITION, BLIND_POSITION, GRAVEYARD_POSITION, DECK_POSITION, loaded, sprite, handCards, tableCards, blindCardCount, graveyardCards, deckCardCount, burntCardCount, handCardsGroup, tableCardsGroup, blindCardsGroup, graveyardCardsGroup, deckCardsGroup, burntCardGroup, button, playState, spacing, cardsInView, currentView, tableCardresetGlobalVarsLeft, rectRight, turn, playerStage, turnText, deckCard, skipTurn, takeCards, hasDebt, music, soundPlace, soundSlide, soundShuffle, drawEnabled, resetGlobalVars, tableCardsSent */
+/* eslint-disable no-global-assign */
+
+const playerStages = {
+    NEED_TABLE: "NEED_TABLE",
+    SENT_TABLE: "SENT_TABLE",
+    NORMAL_PLAY: "NORMAL_PLAY",
+    TABLE_PLAY: "TABLE_PLAY",
+    BLIND_PLAY: "BLIND_PLAY",
+    FINISHED: "FINISHED"
+}
+
 var playState = {
 
     restart: function(){
@@ -20,11 +32,10 @@ var playState = {
 
         playState.started = true;
         game.add.sprite( 0, 0, 'playTable');
-        self = playState;
         //console.log("STARTING GAME");
         //this.dealCards();
         //x = (game.world.centerX - (CARD_WIDTH/2 ) );
-        y = ( game.world.height - CARD_HEIGHT + 60);
+        // y = ( game.world.height - CARD_HEIGHT + 60);
 
         // rectLeft = game.add.button(0,0);
         // rectLeft.width = 140;
@@ -44,56 +55,58 @@ var playState = {
         // rectRight.alpha = 0;
         // rectRight.visible = false;
 
-        self.reshuffle();
+        playState.reshuffle();
 
-        self.placeDeckCard();
+        playState.placeDeckCard();
 
         socket.emit('askCards');
         //console.log("ASK CARDS CLIENT");
     },
+
     dealCards: function(data){
+        this.updateCards(data)
+        if (handCards.length !== tableCards.length) {
+            playerStage = playerStages.NEED_TABLE;
+        } else {
+            playerStage = playerStages.SENT_TABLE;
+            tableCardsSent = tableCards.length;
+        }
+    },
+
+    updateCards: function(data){
         handCards = data.hand;
         tableCards = data.table;
         blindCardCount = data.blindLength;
-        this.drawHandCards();
+
+        if (playerStage !== playerStages.NEED_TABLE) {
+            if (handCards.length > 0) {
+                playerStage = playerStages.NORMAL_PLAY;
+            } else if (tableCards.length > 0) {
+                playerStage = playerStages.TABLE_PLAY;
+            } else if (blindCardCount > 0) {
+                playerStage = playerStages.BLIND_PLAY;
+            } else {
+                playerStage = playerStages.FINISHED;
+            }
+        }
         this.drawBlindCards();
         this.drawTableCards();
-    },
-    dealTable: function(data){
-        // //console.log("GOT "+data.length + " CARDS FROM THE SERVER");
-        // //handCardsGroup = new Phaser.Group(this.game, null, 'kaarten', true);
-        // table = game.add.group();
-        // //console.log(rectLeft);
-
-        // for( var i = 0; i < data.length; i++){
-        //     // For some reason this doesn't work :/
-        //     //    playState.actionOnClick();
-
-        //     // So yeah
-        //     //console.log(data[i][0]);
-        //     var cardKey = cardTranslator.translate(data[i]._value, data[i]._suit);
-        //     //console.log(cardKey);
-        //     playState.giveCard(cardKey, data[i]._value, data[i]._suit, table, 40);
-        // }
-    },
-
-    update: function(){
-
+        this.drawHandCards();
     },
 
     yourTurn: function(){
         turn = true;
         drawEnabled = true;
-        self.renderTurnText("It's your turn!");
-        self.addSkipButton();
+        playState.renderTurnText("It's your turn!");
+        playState.addSkipButton();
     },
 
     newTurn: function(player){
         turn = false;
         drawEnabled = false;
-        self.renderTurnText("it's "+player._nickname+"'s turn" );
-        self.removeSkipButton();
-        self.removeTakeCardsButton();
+        playState.renderTurnText("it's "+player._nickname+"'s turn" );
+        playState.removeSkipButton();
+        playState.removeTakeCardsButton();
     },
 
     renderTurnText: function(text){
@@ -110,7 +123,7 @@ var playState = {
     drawCard: function(card, group, x, y, onClickCallback) {
         let cardKey;
         if (card !== null){
-            console.log("Drawing card " + card._value + " " + card._suit);
+            // console.log("Drawing card " + card._value + " " + card._suit);
             cardKey = cardTranslator.translate(card._value, card._suit);
         } else {
             cardKey = 'back';
@@ -130,6 +143,10 @@ var playState = {
         let runningX = (HAND_POSITION.x - (fullLength / 2));
         let y = (HAND_POSITION.y - (CARD_HEIGHT / 2));
 
+        if (handCardsGroup !== undefined) {
+            handCardsGroup.destroy();
+        }
+
         handCardsGroup = game.add.group();
 
         console.log("Drawing cards, starting from X: " + runningX + " Y: " + y);
@@ -144,6 +161,9 @@ var playState = {
         let runningX = (BLIND_POSITION.x - (fullLength / 2));
         let y = (BLIND_POSITION.y - (CARD_HEIGHT / 2));
 
+        if (blindCardsGroup !== undefined) {
+            blindCardsGroup.destroy();
+        }
         blindCardsGroup = game.add.group();
 
         console.log("Drawing "+blindCardCount+" blind cards, starting from X: " + runningX + " Y: " + y);
@@ -158,12 +178,15 @@ var playState = {
         let runningX = (BLIND_POSITION.x - (fullLength / 2)) + BLIND_POSITION.tableShiftX;
         let y = (BLIND_POSITION.y - (CARD_HEIGHT / 2)) + BLIND_POSITION.tableShiftY;
 
+        if (tableCardsGroup !== undefined) {
+            tableCardsGroup.destroy();
+        }
         tableCardsGroup = game.add.group();
 
         console.log("Drawing table cards, starting from X: " + runningX + " Y: " + y);
 
         for(let card of tableCards) {
-            this.drawCard(card, tableCardsGroup, runningX, y, playState.onCardClick)
+            this.drawCard(card, tableCardsGroup, runningX, y, playState.onTableCardClick)
             runningX += BLIND_POSITION.spacingX
         }
     },
@@ -236,7 +259,7 @@ var playState = {
     onCardClick: function(){
 
         // Not your turn buddy!
-        if(!turn)
+        if(!turn && playerStage != playerStages.NEED_TABLE)
             return false;
 
         if( this.active ){
@@ -246,31 +269,64 @@ var playState = {
         }
         else{
             //console.log('You clicked this card the first time');
-            playState.resetCardsActive();
+            // playState.resetCardsActive();
             this.active = true;
             this.y -= 60;
         }
     },
 
     onBlindCardClick: function(){
-        var cards = playState.getActiveCards();
+        if (playerStage === playerStages.NEED_TABLE)
+        {
+            var cards = playState.getActiveCards();
 
-       // console.log(card);
-        if( cards == null) {
+            // console.log(card);
+            if( cards == null) {
+                return false;
+            }
+            console.log('Click blind ' + cards);
+
+            //console.log(socket);
+            let data = [];
+            for (let card of cards) {
+                tableCards.push(card);
+                data.push({
+                    _value: card._value,
+                    _suit: card._suit
+                })
+            }
+            socket.emit('setTable', data);
+            tableCardsSent += cards.length;
+            if (tableCardsSent >= 3) {
+                playerStage = playerStages.SENT_TABLE;
+            }
+        } else if (playerStage === playerStages.BLIND_PLAY) {
+            // Flip card and attempt to play
+        } else {
             return false;
         }
-        console.log('Click blind ' + cards);
+    },
 
-        //console.log(socket);
-        data = [];
-        for (let card of cards) {
-            tableCards.push(card);
-            data.push({
-                _value: card._value,
-                _suit: card._suit
-            })
+    onTableCardClick: function(){
+        if (playerStage === playerStages.TABLE_PLAY) {
+            if(!turn ){
+                return false;
+            }
+
+            if( this.active ){
+                //console.log('Play this card');
+                this.active = false;
+                this.y +=  60;
+            }
+            else {
+                //console.log('You clicked this card the first time');
+                // playState.resetCardsActive();
+                this.active = true;
+                this.y -= 60;
+            }
+            return true;
         }
-        socket.emit('setTable', data);
+        return false;
     },
 
     onClickRectLeft: function(){
@@ -330,29 +386,29 @@ var playState = {
             }
         });
     },
-    onClickTableCard: function(){
+    onClickGraveyardCard: function(){
 
         var cards = playState.getActiveCards();
 
        // console.log(card);
-        if( cards == null) {
-            return false;
-        }
-        console.log('Click table');
-        if(self.clientSideCheckMove(cards) ) {
-            console.log('check card');
-            playState.addCardsToTable(cards);
-            //console.log(socket);
-            data = [];
-            for (let card of cards) {
-                data.push({
-                    _value: card._value,
-                    _suit: card._suit
-                })
+        if( cards != null) {
+            console.log('Click table');
+            if(playState.clientSideCheckMove(cards) ) {
+                console.log('check card');
+                playState.addCardsToTable(cards);
+                //console.log(socket);
+                let data = [];
+                for (let card of cards) {
+                    data.push({
+                        _value: card._value,
+                        _suit: card._suit
+                    })
+                }
+                socket.emit('move', data);
             }
-            socket.emit('move', data);
+        } else {
+            socket.emit('shop');
         }
-
     },
 
     getActiveCards: function(){
@@ -371,17 +427,17 @@ var playState = {
     },
 
     addCardsToTable: function(cards) {
-        // Not your turn buddy
-        if(!turn)
-            return false;
+        // // Not your turn buddy
+        // if(!turn)
+        //     return false;
 
-        for (let card of cards){
-            self.place(card);
-            card.destroy();
-        }
+        // for (let card of cards){
+        //     playState.place(card);
+        //     card.destroy();
+        // }
 
-        soundPlace.play();
-        playState.shiftCards();
+        // soundPlace.play();
+        // playState.shiftCards();
     },
     resetCardsPlacement: function(){
         var x = 0;
@@ -413,43 +469,54 @@ var playState = {
     drawGraveyard: function() {
         console.log("drawing graveyard card " + graveyardCards.length);
 
+        if (graveyardCardsGroup !== undefined) {
+            graveyardCardsGroup.destroy();
+        }
+        graveyardCardsGroup = game.add.group();
         if (graveyardCards.length > 0){
             let runningX = (GRAVEYARD_POSITION.x + (GRAVEYARD_POSITION.spacingX * graveyardCards.length));
             let runningY = GRAVEYARD_POSITION.y + (GRAVEYARD_POSITION.spacingY * graveyardCards.length);
 
-            graveyardCardsGroup = game.add.group();
-
             console.log("Drawing graveyard cards, starting from X: " + runningX + " Y: " + runningY);
 
             for(let card of graveyardCards) {
-                this.drawCard(card, graveyardCardsGroup, runningX, runningY, playState.onCardClick)
+                this.drawCard(card, graveyardCardsGroup, runningX, runningY, playState.onClickGraveyardCard)
                 runningX -= GRAVEYARD_POSITION.spacingX;
                 runningY -= GRAVEYARD_POSITION.spacingY;
             }
         } else {
             console.log("Drawing blank graveyard card")
-            graveyardCardsGroup = game.add.group();
             // Add an empty card to have something clickable if the table is empty
             var defaultCard = game.add.button(0,0);
             defaultCard.width = CARD_WIDTH;
             defaultCard.height = CARD_HEIGHT;
             defaultCard.x = GRAVEYARD_POSITION.x;
             defaultCard.y = GRAVEYARD_POSITION.y;
-            defaultCard.onInputDown.add(playState.onClickTableCard);
+            defaultCard.onInputDown.add(playState.onClickGraveyardCard);
             defaultCard.alpha = 0;
             graveyardCardsGroup.add(defaultCard);
         }
     },
 
-    serverUpdate: function(data){
-        console.log(card);
-        graveyardCards = data.currentCards;
-        deckCardCount = data.deckCardsRemaining;
-        burntCardCount = data.burntCards;
+    drawDeck: function(){
 
-        self.drawGraveyard();
-        self.drawDeck();
-        self.drawBurntPile();
+    },
+
+    drawBurntPile: function() {
+
+    },
+
+    serverUpdate: function(data){
+        console.log(data);
+        if (typeof data.currentCards !== "undefined"){
+            graveyardCards = data.currentCards;
+            deckCardCount = data.deckCardsRemaining;
+            burntCardCount = data.burntCards;
+        }
+
+        playState.drawGraveyard();
+        playState.drawDeck();
+        playState.drawBurntPile();
     },
 
     getLastCard: function(){
@@ -465,20 +532,20 @@ var playState = {
             return false;
         // Prevent from clicking again
         drawEnabled = false;
-        self.resetCardsActive();
+        playState.resetCardsActive();
         socket.emit('takeCard');
 
     },
 
     endTurn: function(){
         turn = false;
-        self.removeSkipButton();
+        playState.removeSkipButton();
     },
     takenCards: function(cards){
 
             soundSlide.play();
-            self.addCardsToHand(cards);
-            self.endTurn();
+            playState.addCardsToHand(cards);
+            playState.endTurn();
 
     },
 
@@ -503,7 +570,7 @@ var playState = {
         // }
 
         // if( lastCard != null) {
-        //     self.serverPlace(lastCard);
+        //     playState.serverPlace(lastCard);
         // }
     },
 
@@ -511,10 +578,9 @@ var playState = {
         if(deckCard != null) {
             deckCard.destroy();
             deckCard = null;
-
-
         }
     },
+
     placeDeckCard: function(){
         deckCard = game.add.button(0,0, 'back');
         deckCard.x = game.world.width - CARD_WIDTH - 16;
@@ -560,15 +626,15 @@ var playState = {
 
     hasDebt: function(){
         // Don't allow the player to bypass the debt by drawing a card
-        self.enableDraw(false);
+        playState.enableDraw(false);
         hasDebt = true;
         this.addTakeCardsButton();
     },
 
     paidDebt: function(cards){
-        self.enableDraw(true);
-        self.addCardsToHand(cards);
-        self.removeTakeCardsButton();
+        playState.enableDraw(true);
+        playState.addCardsToHand(cards);
+        playState.removeTakeCardsButton();
     },
 
     enableDraw: function(bool){

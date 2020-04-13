@@ -200,7 +200,7 @@ io.on('connection', function(socket) {
         var players = GameManager.getPlayers();
         var readyPlayers = 0;
         for( var i = 0; i < players.length; i++){
-            if( players[i]._inGame){
+            if( players[i]._inGame && players[i].tableReady()){
                 readyPlayers++;
             }
         }
@@ -225,21 +225,33 @@ io.on('connection', function(socket) {
     socket.on('setTable', function(cards) {
         if(typeof socket.player == "undefined" || socket.player.tableReady())
             return false;
-        receieved_cards = []
+        let receieved_cards = []
         for (let card of cards) {
             receieved_cards.push(Card.FromSocket(card));
         }
         console.log("Got setTable from player " + socket.player.getNickname());
         let result = GameManager.nominateTableCards(socket.player, receieved_cards);
         console.log("result = " + result);
+
+        let players = tableReadyPlayers(false);
+        if (players.length === 0){
+            clearTimeout(timerWaitForPlayers);
+
+            // If conditions to end the game aren't met, give the first player the turn
+            if( !checkEndGame() ){
+                firstPlayerTurn();
+            }
+        }
+
         if (result === true){
+            console.log("result true sending update")
             sendUpdate();
         }
         return result;
     });
 
     socket.on('move', function(cards){
-        receieved_cards = []
+        let receieved_cards = []
         for (let card of cards) {
             receieved_cards.push(Card.FromSocket(card));
         }
@@ -259,10 +271,25 @@ io.on('connection', function(socket) {
             eventEmitter.emit('endGame');
             return false
         }
-
-        GameManager.nextTurn();
         return true;
+    });
 
+    socket.on('shop', function(){
+        console.log('new shop');
+        if(typeof socket.player == "undefined" || !GameManager.isStarted())
+            return false;
+
+        if( !GameManager.shop(socket.player) ){
+            socket.emit('falseShop');
+            return false;
+        }
+
+        if( GameManager.allDone() ){
+            // todo: End game
+            eventEmitter.emit('endGame');
+            return false
+        }
+        return true;
     });
 
     socket.on('takeCard', function(){
@@ -341,10 +368,11 @@ function waitForPlayersToSetTableCards (){
 
     timerWaitForPlayers = setTimeout(
         function() {
-            var players = GameManager.getPlayers();
+            let players = tableReadyPlayers(false);
 
-            for( var i = 0; i < players.length; i++){
-                if( !players[i].tableReady()){
+            if (players.length > 0)
+            {
+                for( var i = 0; i < players.length; i++){
                     var playerName = players[i]._nickname;
                     var socketId = players[i]._socketid;
                     GameManager.kickPlayerByIndex(i);
@@ -442,6 +470,24 @@ eventEmitter.on('endGame', function(){
     io.sockets.emit('stopped', {reason:2, playerList: playerList});
 });
 
+function getPlayerHandData(player) {
+    return {
+        hand: player.getHand(HandType.NORMAL),
+        table: player.getHand(HandType.TABLE),
+        blindLength: player.getHand(HandType.BLIND).length
+    }
+}
+
+function updateAllPlayersHandData() {
+    var players = GameManager.getPlayers();
+
+    for (let player of players) {
+        console.log("Sending hand data to player: "+ player.getNickname())
+        let data = getPlayerHandData(player);
+        io.sockets.connected[player._socketid].emit('updatePlayer', data);
+    }
+}
+
 function dealCardsHandler(socket){
 
     var players = GameManager.getPlayers();
@@ -452,11 +498,7 @@ function dealCardsHandler(socket){
         if(socketPlayer._socketid == player._socketid) {
 
             console.log('Give hand to ' + player._nickname);
-            data = {
-                hand: player.getHand(HandType.NORMAL),
-                table: player.getHand(HandType.TABLE),
-                blindLength: player.getHand(HandType.BLIND).length
-            };
+            let data = getPlayerHandData(player);
             io.sockets.connected[player._socketid].emit('giveHand', data);
         }
     }
@@ -490,7 +532,16 @@ function firstPlayerTurn(){
 // Send update to all clients about the game
 function sendUpdate(){
     io.sockets.emit('update', getGameData());
+    updateAllPlayersHandData();
 }
+
+function tableReadyPlayers(ready=false){
+    let filtered_players = GameManager.getPlayers().filter(
+        function(player) { return player.tableReady() === ready; });
+
+    return filtered_players;
+}
+
 // Start the server
 http.listen(3000, function(){
     console.log('listening on *:3000');

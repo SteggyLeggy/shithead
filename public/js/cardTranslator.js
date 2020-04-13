@@ -21,7 +21,6 @@
 var cardTranslator = {
 
     translate: function(value, suit) {
-        console.log("value: "+ value+ " suit: "+suit);
         if( value == 0){
             return 'joker';
         }

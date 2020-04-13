@@ -129,8 +129,9 @@ html(lang="en")
             function updateGUI(data){
                 updatePlayerCount(data.playerCount);
                 updatePlayerList(data.players);
-                if (typeof playstate !== "undefined") {
-                    playstate.serverUpdate(data);
+                if (typeof playState !== "undefined") {
+                    console.log("Running serverUpdate")
+                    playState.serverUpdate(data);
                 }
             }
 
@@ -215,8 +216,13 @@ html(lang="en")
             });
 
             socket.on('update', function(data){
-                console.log(data);
+                console.log("update received " + data);
                 updateGUI(data);
+            });
+
+            socket.on('updatePlayer', function(data){
+                console.log("player update received " + data);
+                playState.updateCards(data);
             });
 
             socket.on('lateJoin', function(){

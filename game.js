@@ -182,7 +182,6 @@ Game.prototype.stop = function(){
     this._debt = 0;
 }
 
-// Give the first turn to a random player
 Game.prototype.firstTurn = function(){
     let lowestCard;
     let lowestPlayer;
@@ -199,7 +198,7 @@ Game.prototype.firstTurn = function(){
     }
 
     console.log("Making first move with " + lowestPlayer.getNickname() + " with card " + lowestCard.toString())
-
+    this._currentTurn = this._players.indexOf(lowestPlayer)
     this.move(lowestPlayer, [lowestCard])
 }
 
@@ -275,9 +274,17 @@ Game.prototype.move = function(player, cards){
     this.nextTurn();
 
     return true;
-
-
 }
+
+Game.prototype.shop = function(player) {
+    let graveYard = this._deck.getAndEmptyGraveyard();
+    for (let card of graveYard) {
+        player.give(card);
+    }
+    this.nextTurn();
+    return true;
+}
+
 // Get the only player that is not finished
 Game.prototype.getLoser = function(){
 
@@ -358,10 +365,13 @@ Game.prototype.triggerSpecialEffect = function(card, count, player){
                 for (let x = 0; x < count; x++){
                     this.setNextTurn();
                 }
+                break;
             case "BURN":
                 this._deck.burnCards();
+                break;
             case "REVERSE":
                 this.flipRotation();
+                break;
         }
     }
 }
@@ -423,7 +433,7 @@ Game.prototype.getNextPlayer = function(currentIndex){
         this._eventEmitter.emit('endGame');
         return false;
     }
-
+    let next;
     if( !this._rotationReversed ) {
 
         next = ++currentIndex;

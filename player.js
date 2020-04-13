@@ -40,7 +40,7 @@ Player.prototype.getHand = function(type) {
 }
 
 Player.prototype.getAllCards = function() {
-    cards = []
+    let cards = []
     for (let type of Object.values(HandType)){
         cards.push(this.getHand(type));
     }
@@ -48,7 +48,7 @@ Player.prototype.getAllCards = function() {
 }
 
 Player.prototype.give = function(cards, type=HandType.NORMAL) {
-    console.log("Giving cards " + type);
+    console.log("Giving cards " + cards + " to type " + type);
     if( cards == null || typeof cards.length == "undefined")
         return false;
 
@@ -102,7 +102,8 @@ Player.prototype.isReady = function(){
 }
 
 Player.prototype.tableReady = function() {
-    return this._table.length == this._hand.length;
+    console.log("table ready? table: " +this._table.length+ " hand: " +this._hand.length)
+    return this._table.length === this._hand.length;
 }
 
 Player.prototype.moveCard = function(card, fromType, toType) {
@@ -112,7 +113,7 @@ Player.prototype.moveCard = function(card, fromType, toType) {
         return false;
     }
     this.take(card, fromType);
-    this.give(card, toType);
+    this.give([card], toType);
     return true;
 }
 
@@ -126,7 +127,7 @@ Player.prototype.hasCards = function(cards, type=HandType.NORMAL){
 
     var hand = this.getHand(type)
 
-    let filteredHand = hand.filter(function(handCard, index, arr) {
+    let filteredHand = hand.filter(function(handCard) {
         for (let checkCard of cards) {
             if (handCard.isEqual(checkCard)){
                 return true;

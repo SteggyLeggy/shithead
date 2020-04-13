@@ -20,8 +20,8 @@ const BLIND_POSITION = {
 }
 
 const GRAVEYARD_POSITION = {
-    x: 20,
-    y: 20,
+    x: (GAME_WIDTH / 2) - (CARD_WIDTH / 2),
+    y: 10,
     spacingX: 1,
     spacingY: 1
 }
@@ -39,6 +39,7 @@ var blindCardCount = 0;
 var graveyardCards = [];
 var deckCardCount = 0;
 var burntCardCount = 0;
+var tableCardsSent = 0;
 
 var handCardsGroup;
 var tableCardsGroup;
@@ -58,6 +59,7 @@ var rectLeft = null;
 var rectRight = null;
 // Check if the it's the player's turn currently
 var turn = false;
+var playerStage = "";
 var turnText = null;
 var deckCard = null;
 var skipTurn = null;
@@ -88,6 +90,7 @@ function resetGlobalVars(){
     deckCardCount = 0;
     graveyardCards = [];
     burntCardCount = 0;
+    playerStage = "";
 
     button = null;
     self = null;

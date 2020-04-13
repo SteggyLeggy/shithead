@@ -49,7 +49,7 @@ Deck.prototype.take = function(amount){
 
 Deck.prototype.takeOne = function(){
 
-  if( this.canTake()){
+  if( !this.canTake()){
     return false;
   }
 
@@ -109,9 +109,9 @@ Deck.prototype.getLastCardsOfValue = function(cardValue) {
 }
 
 Deck.prototype.burnCards = function() {
-  let card;
-  while (card = this._graveYard.unshift()) {
-    this._burnt.push(card);
+  for (let x = this._graveYard.length -1; x >= 0; x--){
+      let card = this._graveYard.shift();
+      this._burnt.push(card);
   }
 }
 
@@ -147,8 +147,6 @@ Deck.prototype.reshuffleCards = function(take){
   }
 
   this.shuffle();
-
-
 }
 
 Deck.prototype.returnCards = function(cards){
@@ -158,6 +156,6 @@ Deck.prototype.returnCards = function(cards){
 }
 
 Deck.prototype.canTake = function(){
-  return this.isEmpty();
+  return !this.isEmpty();
 }
 module.exports = Deck;
