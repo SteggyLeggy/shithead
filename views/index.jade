@@ -268,16 +268,6 @@ html(lang="en")
 
             });
 
-            socket.on('placed', function(card){
-                // Render card for othersc
-                console.log(card);
-                playState.serverPlace(card);
-            });
-
-            socket.on('endJackEffect', function(){
-                playState.endJackEffect();
-            });
-
             socket.on('stopped', function(data){
                 $('#playerData').show();
                 $('#lobby').hide();

@@ -484,7 +484,10 @@ function updateAllPlayersHandData() {
     for (let player of players) {
         console.log("Sending hand data to player: "+ player.getNickname())
         let data = getPlayerHandData(player);
-        io.sockets.connected[player._socketid].emit('updatePlayer', data);
+        let playerSocket = io.sockets.connected[player._socketid];
+        if (playerSocket !== undefined){
+            playerSocket.emit('updatePlayer', data);
+        }
     }
 }
 

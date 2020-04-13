@@ -390,8 +390,10 @@ var playState = {
 
         var cards = playState.getActiveCards();
 
-       // console.log(card);
-        if( cards != null) {
+        // console.log(card);
+        if( cards === null) {
+            return false;
+        } else if( cards.length > 0) {  
             console.log('Click table');
             if(playState.clientSideCheckMove(cards) ) {
                 console.log('check card');
