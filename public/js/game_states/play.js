@@ -110,6 +110,7 @@ var playState = {
     drawCard: function(card, group, x, y, onClickCallback) {
         let cardKey;
         if (card !== null){
+            console.log("Drawing card " + card._value + " " + card._suit);
             cardKey = cardTranslator.translate(card._value, card._suit);
         } else {
             cardKey = 'back';
@@ -148,7 +149,7 @@ var playState = {
         console.log("Drawing "+blindCardCount+" blind cards, starting from X: " + runningX + " Y: " + y);
 
         for(let x = 0; x < blindCardCount; x++) {
-            this.drawCard(null, handCardsGroup, runningX, y, playState.onBlindCardClick)
+            this.drawCard(null, blindCardsGroup, runningX, y, playState.onBlindCardClick)
             runningX += BLIND_POSITION.spacingX
         }
     },
@@ -162,7 +163,7 @@ var playState = {
         console.log("Drawing table cards, starting from X: " + runningX + " Y: " + y);
 
         for(let card of tableCards) {
-            this.drawCard(card, handCardsGroup, runningX, y, playState.onCardClick)
+            this.drawCard(card, tableCardsGroup, runningX, y, playState.onCardClick)
             runningX += BLIND_POSITION.spacingX
         }
     },
@@ -258,7 +259,7 @@ var playState = {
         if( cards == null) {
             return false;
         }
-        console.log('Click blind');
+        console.log('Click blind ' + cards);
 
         //console.log(socket);
         data = [];

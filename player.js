@@ -107,10 +107,13 @@ Player.prototype.tableReady = function() {
 
 Player.prototype.moveCard = function(card, fromType, toType) {
     if (!this.hasCard(card, fromType)) {
+        console.log("player doesn't have card " + card + " in hand " + this.getHand(fromType));
+
         return false;
     }
     this.take(card, fromType);
     this.give(card, toType);
+    return true;
 }
 
 Player.prototype.hasCard = function(card, type=HandType.NORMAL) {

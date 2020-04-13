@@ -25,7 +25,7 @@ var Card = function(value, suit) {
 }
 
 Card.FromSocket = function(socket_value){
-    return new Card(socket_value._value, socket_value.suit);
+    return new Card(socket_value._value, socket_value._suit);
 }
 
 Card.prototype.toString = function() {

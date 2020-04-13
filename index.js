@@ -231,7 +231,7 @@ io.on('connection', function(socket) {
         }
         console.log("Got setTable from player " + socket.player.getNickname());
         let result = GameManager.nominateTableCards(socket.player, receieved_cards);
-
+        console.log("result = " + result);
         if (result === true){
             sendUpdate();
         }
